@@ -12,7 +12,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    astal_niri = {
+    astal-niri = {
       url = "github:sameoldlab/astal?ref=feat/niri";
       inputs.nixpkgs.follows = "nixpkgs";
     };
@@ -20,20 +20,21 @@
     ags = {
       url = "github:aylur/ags";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.astal.follows = "astal_niri";
+      inputs.astal.follows = "astal-niri";
     };
   };
 
   outputs = inputs @ {
     flake-parts,
     astal,
-    astal_niri,
+    astal-niri,
     ags,
     self,
     ...
   }:
     flake-parts.lib.mkFlake {inherit inputs;} {
       systems = inputs.nixpkgs.lib.systems.flakeExposed;
+
       perSystem = {
         system,
         pkgs,
@@ -72,20 +73,23 @@
             wireplumber
           ])
           ++ [
-            astal_niri.packages.${system}.niri
+            astal-niri.packages.${system}.niri
             ags.packages.${system}.agsFull
           ];
+
         nativeBuildInputs = with pkgs; [
           meson
           ninja
           wrapGAppsHook3
         ];
+
         devshellBuildDependencies = nativeBuildInputs ++ buildDependencies;
       in {
         packages = rec {
           default = delta-shell;
+
           delta-shell = pkgs.stdenv.mkDerivation {
-            name = "${pname}";
+            name = pname;
             src = ./.;
 
             inherit nativeBuildInputs;
@@ -99,6 +103,7 @@
             meta.mainProgram = pname;
           };
         };
+
         devShells = {
           default = pkgs.mkShell {
             buildInputs = devshellBuildDependencies;
@@ -109,6 +114,7 @@
           };
         };
       };
+
       flake = {
         nixosModules.default = {
           system,
@@ -125,6 +131,7 @@
               default = self.packages.${system}.delta-shell;
             };
           };
+
           config = lib.mkMerge [
             (lib.mkIf config.programs.delta-shell.enable {
               programs.gpu-screen-recorder.enable = true;
