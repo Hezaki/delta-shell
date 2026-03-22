@@ -42,21 +42,19 @@
       }: let
         pname = "delta-shell";
 
-        buildDependencies =
+        buildInputs =
           (with pkgs; [
             gjs
             gtk4
-            brightnessctl
-            dart-sass
-            gpu-screen-recorder
-            cliphist
-            bluez
             libsoup_3
             libadwaita
             gobject-introspection
-            geoclue2
             glib-networking
             wrapGAppsHook3
+
+            bluez
+            geoclue2
+            libgtop
           ])
           ++ (with astal.packages.${system}; [
             io
@@ -74,7 +72,7 @@
           ])
           ++ [
             astal-niri.packages.${system}.niri
-            ags.packages.${system}.agsFull
+            ags.packages.${system}.ags
           ];
 
         nativeBuildInputs = with pkgs; [
@@ -83,7 +81,18 @@
           wrapGAppsHook3
         ];
 
-        devshellBuildDependencies = nativeBuildInputs ++ buildDependencies;
+        runtimeDependencies = with pkgs; [
+          ags.packages.${system}.ags
+          dart-sass
+          brightnessctl
+          ddcutil
+          gpu-screen-recorder
+          wl-clipboard
+          cliphist
+        ];
+
+        devshellBuildInputs =
+          nativeBuildInputs ++ buildInputs ++ runtimeDependencies;
       in {
         packages = rec {
           default = delta-shell;
@@ -92,12 +101,12 @@
             name = pname;
             src = ./.;
 
+            inherit buildInputs;
             inherit nativeBuildInputs;
-            buildInputs = buildDependencies;
 
             postInstall = ''
               wrapProgram $out/bin/${pname} \
-                --prefix PATH : ${pkgs.lib.makeBinPath buildDependencies}
+                --prefix PATH : ${pkgs.lib.makeBinPath runtimeDependencies}
             '';
 
             meta.mainProgram = pname;
@@ -106,7 +115,7 @@
 
         devShells = {
           default = pkgs.mkShell {
-            buildInputs = devshellBuildDependencies;
+            buildInputs = devshellBuildInputs;
             shellHook = ''
               echo 'Welcome to the delta-shell nix devShell!'
               echo 'To get build instructions, please read README.'
