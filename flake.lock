@@ -3,7 +3,7 @@
     "ags": {
       "inputs": {
         "astal": [
-          "astal_niri"
+          "astal-niri"
         ],
         "nixpkgs": [
           "nixpkgs"
@@ -43,7 +43,7 @@
         "type": "github"
       }
     },
-    "astal_niri": {
+    "astal-niri": {
       "inputs": {
         "nixpkgs": [
           "nixpkgs"
@@ -66,7 +66,9 @@
     },
     "flake-parts": {
       "inputs": {
-        "nixpkgs-lib": "nixpkgs-lib"
+        "nixpkgs-lib": [
+          "nixpkgs"
+        ]
       },
       "locked": {
         "lastModified": 1765835352,
@@ -98,26 +100,11 @@
         "type": "github"
       }
     },
-    "nixpkgs-lib": {
-      "locked": {
-        "lastModified": 1765674936,
-        "narHash": "sha256-k00uTP4JNfmejrCLJOwdObYC9jHRrr/5M/a/8L2EIdo=",
-        "owner": "nix-community",
-        "repo": "nixpkgs.lib",
-        "rev": "2075416fcb47225d9b68ac469a5c4801a9c4dd85",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nix-community",
-        "repo": "nixpkgs.lib",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
         "ags": "ags",
         "astal": "astal",
-        "astal_niri": "astal_niri",
+        "astal-niri": "astal-niri",
         "flake-parts": "flake-parts",
         "nixpkgs": "nixpkgs"
       }
