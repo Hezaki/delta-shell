@@ -126,11 +126,15 @@
 
       flake = {
         nixosModules.default = {
-          system,
           lib,
+          pkgs,
           config,
           ...
-        }: {
+        }: let
+          inherit (pkgs.stdenv.hostPlatform) system;
+
+          cfg = config.programs.delta-shell;
+        in {
           options.programs.delta-shell = {
             enable = lib.mkEnableOption "Install delta-shell";
 
@@ -141,15 +145,11 @@
             };
           };
 
-          config = lib.mkMerge [
-            (lib.mkIf config.programs.delta-shell.enable {
-              programs.gpu-screen-recorder.enable = true;
+          config = lib.mkIf config.programs.delta-shell.enable {
+            environment.systemPackages = [cfg.package];
 
-              environment.systemPackages = [
-                config.programs.delta-shell.package
-              ];
-            })
-          ];
+            programs.gpu-screen-recorder.enable = true;
+          };
         };
       };
     };
