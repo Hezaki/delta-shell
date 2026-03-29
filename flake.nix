@@ -2,12 +2,17 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
+    flake-parts = {
+      url = "github:hercules-ci/flake-parts";
+      inputs.nixpkgs-lib.follows = "nixpkgs";
+    };
+
     astal = {
       url = "github:aylur/astal";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    astal_niri = {
+    astal-niri = {
       url = "github:sameoldlab/astal?ref=feat/niri";
       inputs.nixpkgs.follows = "nixpkgs";
     };
@@ -15,45 +20,42 @@
     ags = {
       url = "github:aylur/ags";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.astal.follows = "astal_niri";
-    };
-    flake-parts = {
-      url = "github:hercules-ci/flake-parts";
+      inputs.astal.follows = "astal-niri";
     };
   };
 
   outputs = inputs @ {
     flake-parts,
     astal,
-    astal_niri,
+    astal-niri,
     ags,
     self,
     ...
   }:
     flake-parts.lib.mkFlake {inherit inputs;} {
-      imports = [];
-      systems = [
-        "x86_64-linux"
-      ];
-      perSystem = {pkgs, ...}: let
+      systems = inputs.nixpkgs.lib.systems.flakeExposed;
+
+      perSystem = {
+        system,
+        pkgs,
+        ...
+      }: let
         pname = "delta-shell";
 
-        buildDependencies = with pkgs;
-          [
+        buildInputs =
+          (with pkgs; [
             gjs
             gtk4
-            brightnessctl
-            dart-sass
-            gpu-screen-recorder
-            cliphist
-            bluez
             libsoup_3
             libadwaita
             gobject-introspection
-            geoclue2
             glib-networking
             wrapGAppsHook3
-          ]
+
+            bluez
+            geoclue2
+            libgtop
+          ])
           ++ (with astal.packages.${system}; [
             io
             astal4
@@ -69,31 +71,51 @@
             wireplumber
           ])
           ++ [
-            astal_niri.packages.${system}.niri
-            ags.packages.${system}.agsFull
+            astal-niri.packages.${system}.niri
+            ags.packages.${system}.ags
           ];
+
         nativeBuildInputs = with pkgs; [
           meson
           ninja
           wrapGAppsHook3
         ];
-        devshellBuildDependencies = nativeBuildInputs ++ buildDependencies;
+
+        runtimeDependencies = with pkgs; [
+          ags.packages.${system}.ags
+          dart-sass
+          brightnessctl
+          ddcutil
+          gpu-screen-recorder
+          wl-clipboard
+          cliphist
+        ];
+
+        devshellBuildInputs =
+          nativeBuildInputs ++ buildInputs ++ runtimeDependencies;
       in {
-        packages.default = pkgs.stdenv.mkDerivation {
-          name = "${pname}";
-          src = ./.;
+        packages = rec {
+          default = delta-shell;
 
-          inherit nativeBuildInputs;
-          buildInputs = buildDependencies;
+          delta-shell = pkgs.stdenv.mkDerivation {
+            name = pname;
+            src = ./.;
 
-          postInstall = ''
-            wrapProgram $out/bin/${pname} \
-              --prefix PATH : ${pkgs.lib.makeBinPath buildDependencies}
-          '';
+            inherit buildInputs;
+            inherit nativeBuildInputs;
+
+            postInstall = ''
+              wrapProgram $out/bin/${pname} \
+                --prefix PATH : ${pkgs.lib.makeBinPath runtimeDependencies}
+            '';
+
+            meta.mainProgram = pname;
+          };
         };
+
         devShells = {
           default = pkgs.mkShell {
-            buildInputs = devshellBuildDependencies;
+            buildInputs = devshellBuildInputs;
             shellHook = ''
               echo 'Welcome to the delta-shell nix devShell!'
               echo 'To get build instructions, please read README.'
@@ -101,29 +123,33 @@
           };
         };
       };
+
       flake = {
-        flakeModules.default = {
-          pkgs,
+        nixosModules.default = {
           lib,
+          pkgs,
           config,
           ...
-        }: {
+        }: let
+          inherit (pkgs.stdenv.hostPlatform) system;
+
+          cfg = config.programs.delta-shell;
+        in {
           options.programs.delta-shell = {
             enable = lib.mkEnableOption "Install delta-shell";
+
             package = lib.mkOption {
               type = lib.types.package;
               description = "The delta-shell package to use";
-              default = self.packages.${pkgs.system}.default;
+              default = self.packages.${system}.delta-shell;
             };
           };
-          config = lib.mkMerge [
-            (lib.mkIf config.programs.delta-shell.enable {
-              programs.gpu-screen-recorder.enable = true;
-              environment.systemPackages = [
-                config.programs.delta-shell.package
-              ];
-            })
-          ];
+
+          config = lib.mkIf config.programs.delta-shell.enable {
+            environment.systemPackages = [cfg.package];
+
+            programs.gpu-screen-recorder.enable = true;
+          };
         };
       };
     };
